@@ -1,8 +1,8 @@
 # memoryfs
 
-An in-memory filesystem implementation of io/fs.FS.
+<img width="20%" align="right" src="https://i.giphy.com/media/SuEFqeWxlLcvm/giphy.webp" />
 
-![stupid gif](https://i.giphy.com/media/SuEFqeWxlLcvm/giphy.webp)
+An in-memory filesystem implementation of io/fs.FS.
 
 `memoryfs` implements the following `fs` interfaces:
 
