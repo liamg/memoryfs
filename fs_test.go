@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Basics(t *testing.T) {
+func Test_AllOperations(t *testing.T) {
 
 	memfs := New()
 
@@ -23,10 +24,10 @@ func Test_Basics(t *testing.T) {
 	t.Run("Open file", func(t *testing.T) {
 		f, err := memfs.Open("test.txt")
 		require.NoError(t, err)
+		defer func() { _ = f.Close() }()
 		data, err := ioutil.ReadAll(f)
 		require.NoError(t, err)
 		assert.Equal(t, "hello world", string(data))
-		require.NoError(t, f.Close())
 	})
 
 	t.Run("Open missing file", func(t *testing.T) {
@@ -38,6 +39,7 @@ func Test_Basics(t *testing.T) {
 	t.Run("Open directory", func(t *testing.T) {
 		f, err := memfs.Open("files")
 		require.NoError(t, err)
+		defer func() { _ = f.Close() }()
 		require.NotNil(t, f)
 		_, err = f.Read([]byte{})
 		require.Error(t, err)
@@ -46,10 +48,10 @@ func Test_Basics(t *testing.T) {
 	t.Run("Open file in dir", func(t *testing.T) {
 		f, err := memfs.Open("files/a/b/c/.secret")
 		require.NoError(t, err)
+		defer func() { _ = f.Close() }()
 		data, err := ioutil.ReadAll(f)
 		require.NoError(t, err)
 		assert.Equal(t, "secret file!", string(data))
-		require.NoError(t, f.Close())
 	})
 
 	t.Run("Stat file", func(t *testing.T) {
@@ -128,6 +130,56 @@ func Test_Basics(t *testing.T) {
 			},
 		)
 	})
+}
+
+func Test_ConcurrentWritesToDirectory(t *testing.T) {
+	memfs := New()
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			require.NoError(t, memfs.WriteFile(fmt.Sprintf("test_%d.txt", i), []byte("hello world"), 0o644))
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	entries, err := memfs.ReadDir(".")
+	require.NoError(t, err)
+	assert.Equal(t, 100, len(entries))
+}
+
+func Test_ConcurrentReadsOfFile(t *testing.T) {
+	memfs := New()
+	err := memfs.WriteFile("test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			data, err := fs.ReadFile(memfs, "test.txt")
+			assert.NoError(t, err)
+			assert.Equal(t, "hello world", string(data))
+		}()
+	}
+	wg.Wait()
+}
+
+func Test_WriteWhileOpen(t *testing.T) {
+	memfs := New()
+	err := memfs.WriteFile("test.txt", []byte("goodbye world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("test.txt")
+	require.NoError(t, err)
+
+	err = memfs.WriteFile("test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+
+	assert.Equal(t, "hello world", string(data))
 }
 
 type entry struct {

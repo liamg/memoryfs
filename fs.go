@@ -1,7 +1,9 @@
 package memoryfs
 
 import (
+	"fmt"
 	"io/fs"
+	"os"
 	"time"
 )
 
@@ -19,18 +21,25 @@ func New() *FS {
 				isDir:    true,
 				mode:     0o700,
 			},
-			dirs:  map[string]dir{},
-			files: map[string]file{},
+			dirs:  map[string]*dir{},
+			files: map[string]*file{},
 		},
 	}
 }
 
 func (m *FS) Stat(name string) (fs.FileInfo, error) {
-	f, err := m.dir.Open(name)
-	if err != nil {
+	name = cleanse(name)
+	if f, err := m.dir.getFile(name); err == nil {
+		return f.openR().Stat()
+	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-	return f.Stat()
+	if f, err := m.dir.getDir(name); err == nil {
+		return f.Stat()
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	return nil, fmt.Errorf("no such file or directory: %s: %w", name, fs.ErrNotExist)
 }
 
 func (m *FS) ReadDir(name string) ([]fs.DirEntry, error) {
