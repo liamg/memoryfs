@@ -182,6 +182,24 @@ func Test_WriteWhileOpen(t *testing.T) {
 	assert.Equal(t, "hello world", string(data))
 }
 
+func Test_MkdirAllRoot(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll(".", 0o644)
+	require.NoError(t, err)
+	var count int
+	err = fs.WalkDir(memfs, ".", func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		count++
+		if count > 1 {
+			t.Fatal("more than one file found!")
+		}
+		return nil
+	})
+	require.NoError(t, err)
+}
+
 type entry struct {
 	path string
 	info fs.DirEntry

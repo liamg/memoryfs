@@ -125,6 +125,10 @@ func (f *dir) Close() error {
 func (f *dir) MkdirAll(path string, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 
+	if path == "" {
+		return nil
+	}
+
 	f.RLock()
 	_, ok := f.files[parts[0]]
 	f.RUnlock()
