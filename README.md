@@ -2,6 +2,8 @@
 
 An in-memory filesystem implementation of io/fs.FS.
 
+![stupid gif](https://i.giphy.com/media/SuEFqeWxlLcvm/giphy.webp)
+
 `memoryfs` implements the following `fs` interfaces:
 
 - [fs.FS](https://pkg.go.dev/io/fs#FS)
