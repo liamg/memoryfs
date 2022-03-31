@@ -162,7 +162,11 @@ func (f *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 
 	if len(parts) == 1 {
-		buffer := make([]byte, len(data), bufferSize)
+		max := bufferSize
+		if len(data) > max {
+			max = len(data)
+		}
+		buffer := make([]byte, len(data), max)
 		copy(buffer, data)
 		f.Lock()
 		defer f.Unlock()
