@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ var separator = "/"
 type dir struct {
 	info  fileinfo
 	dirs  map[string]dir
-	files map[string]memfile
+	files map[string]file
 }
 
 func (d *dir) Open(name string) (fs.File, error) {
@@ -23,46 +24,57 @@ func (d *dir) Open(name string) (fs.File, error) {
 		return d, nil
 	}
 
-	parts := strings.Split(name, separator)
-
-	if len(parts) == 1 {
-		if f, ok := d.files[name]; ok {
-			f.reader = bytes.NewReader(f.content)
-			return &f, nil
-		}
+	if f, err := d.getFile(name); err == nil {
+		return f, nil
+	} else if !os.IsNotExist(err) {
+		return nil, err
 	}
 
-	if f, ok := d.dirs[parts[0]]; ok {
-		return f.Open(strings.Join(parts[1:], separator))
+	if f, err := d.getDir(name); err == nil {
+		return f, nil
+	} else if !os.IsNotExist(err) {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("no such file or directory: %s: %w", parts[0], fs.ErrNotExist)
+	return nil, fmt.Errorf("no such file or directory: %s: %w", name, fs.ErrNotExist)
 }
 
 func (d *dir) Stat() (fs.FileInfo, error) {
 	return d.info, nil
 }
 
-func (d *dir) find(name string) (fs.FileInfo, error) {
+func (d *dir) getFile(name string) (*file, error) {
 
-	if name == "" || name == "." {
-		return d.info, nil
+	parts := strings.Split(name, separator)
+	if len(parts) == 1 {
+		if f, ok := d.files[name]; ok {
+			f.reader = bytes.NewReader(f.content)
+			return &f, nil
+		}
+		return nil, fs.ErrNotExist
+	}
+
+	sub, err := d.getDir(parts[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return sub.getFile(strings.Join(parts[1:], separator))
+}
+
+func (d *dir) getDir(name string) (*dir, error) {
+
+	if name == "" {
+		return d, nil
 	}
 
 	parts := strings.Split(name, separator)
 
-	if len(parts) == 1 {
-		if f, ok := d.files[name]; ok {
-			f.reader = bytes.NewReader(f.content)
-			return f.info, nil
-		}
-	}
-
 	if f, ok := d.dirs[parts[0]]; ok {
-		return f.find(strings.Join(parts[1:], separator))
+		return f.getDir(strings.Join(parts[1:], separator))
 	}
 
-	return nil, fmt.Errorf("no such file or directory: %s: %w", parts[0], fs.ErrNotExist)
+	return nil, fs.ErrNotExist
 }
 
 func (d *dir) ReadDir(name string) ([]fs.DirEntry, error) {
@@ -115,7 +127,7 @@ func (f *dir) MkdirAll(path string, perm fs.FileMode) error {
 				mode:     perm,
 			},
 			dirs:  map[string]dir{},
-			files: map[string]memfile{},
+			files: map[string]file{},
 		}
 	}
 
@@ -135,7 +147,7 @@ func (f *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	if len(parts) == 1 {
 		buffer := make([]byte, len(data))
 		copy(buffer, data)
-		f.files[parts[0]] = memfile{
+		f.files[parts[0]] = file{
 			info: fileinfo{
 				name:     parts[0],
 				size:     int64(len(buffer)),

@@ -17,16 +17,20 @@ func New() *FS {
 				size:     0x100,
 				modified: time.Now(),
 				isDir:    true,
-				mode:     0o755,
+				mode:     0o700,
 			},
 			dirs:  map[string]dir{},
-			files: map[string]memfile{},
+			files: map[string]file{},
 		},
 	}
 }
 
 func (m *FS) Stat(name string) (fs.FileInfo, error) {
-	return m.dir.find(cleanse(name))
+	f, err := m.dir.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return f.Stat()
 }
 
 func (m *FS) ReadDir(name string) ([]fs.DirEntry, error) {
