@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -203,4 +204,40 @@ func (f *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	f.RLock()
 	defer f.RUnlock()
 	return f.dirs[parts[0]].WriteFile(strings.Join(parts[1:], separator), data, perm)
+}
+
+func (d *dir) glob(pattern string) ([]string, error) {
+
+	var entries []string
+	parts := strings.Split(pattern, separator)
+
+	for name, dir := range d.dirs {
+		if ok, err := filepath.Match(parts[0], name); err != nil {
+			return nil, err
+		} else if ok {
+			if len(parts) == 1 {
+				entries = append(entries, name)
+			} else {
+				subEntries, err := dir.glob(strings.Join(parts[1:], separator))
+				if err != nil {
+					return nil, err
+				}
+				for _, sub := range subEntries {
+					entries = append(entries, strings.Join([]string{name, sub}, separator))
+				}
+			}
+		}
+	}
+
+	if len(parts) == 1 {
+		for name := range d.files {
+			if ok, err := filepath.Match(parts[0], name); err != nil {
+				return nil, err
+			} else if ok {
+				entries = append(entries, name)
+			}
+		}
+	}
+
+	return entries, nil
 }

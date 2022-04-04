@@ -3,17 +3,18 @@ package memoryfs
 import (
 	"fmt"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"time"
 )
 
 type FS struct {
-	dir dir
+	dir *dir
 }
 
 func New() *FS {
 	return &FS{
-		dir: dir{
+		dir: &dir{
 			info: fileinfo{
 				name:     ".",
 				size:     0x100,
@@ -56,4 +57,26 @@ func (m *FS) WriteFile(path string, data []byte, perm fs.FileMode) error {
 
 func (m *FS) MkdirAll(path string, perm fs.FileMode) error {
 	return m.dir.MkdirAll(cleanse(path), perm)
+}
+
+func (m *FS) ReadFile(name string) ([]byte, error) {
+	f, err := m.dir.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(f)
+}
+
+func (m *FS) Sub(dir string) (fs.FS, error) {
+	d, err := m.dir.getDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	return &FS{
+		dir: d,
+	}, nil
+}
+
+func (m *FS) Glob(pattern string) ([]string, error) {
+	return m.dir.glob(pattern)
 }
