@@ -11,6 +11,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_FSInterfaceSupport(t *testing.T) {
+
+	type allFS interface {
+		fs.ReadFileFS
+		fs.ReadDirFS
+		fs.StatFS
+		fs.GlobFS
+		fs.SubFS
+	}
+
+	var m fs.FS = New()
+	_, ok := m.(allFS)
+	assert.True(t, ok)
+}
+
 func Test_AllOperations(t *testing.T) {
 
 	memfs := New()
@@ -110,6 +125,21 @@ func Test_AllOperations(t *testing.T) {
 		assert.Equal(t, true, info.IsDir())
 	})
 
+	t.Run("ReadFile", func(t *testing.T) {
+		data, err := memfs.ReadFile("files/a/b/c/note.txt")
+		require.NoError(t, err)
+		assert.Equal(t, ":)", string(data))
+	})
+
+	t.Run("Sub", func(t *testing.T) {
+		sub, err := memfs.Sub("files/a")
+		require.NoError(t, err)
+		data, err := sub.(fs.ReadFileFS).ReadFile("b/c/note.txt")
+
+		require.NoError(t, err)
+		assert.Equal(t, ":)", string(data))
+	})
+
 	t.Run("Walk directory", func(t *testing.T) {
 		assertWalkContainsEntries(
 			t,
@@ -129,6 +159,23 @@ func Test_AllOperations(t *testing.T) {
 				"files/a/b/c",
 			},
 		)
+	})
+
+	t.Run("Glob", func(t *testing.T) {
+		results, err := memfs.Glob("blah")
+		require.NoError(t, err)
+		assert.Len(t, results, 0)
+
+		results, err = memfs.Glob("*")
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
+		assert.Contains(t, results, "files")
+		assert.Contains(t, results, "test.txt")
+
+		results, err = memfs.Glob("files/*/b/*/*.txt")
+		require.NoError(t, err)
+		assert.Len(t, results, 1)
+		assert.Contains(t, results, "files/a/b/c/note.txt")
 	})
 }
 

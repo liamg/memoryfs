@@ -4,11 +4,14 @@
 
 An in-memory filesystem implementation of io/fs.FS.
 
-`memoryfs` implements the following `fs` interfaces:
+`memoryfs` implements all of the currently defined `io/fs` interfaces:
 
 - [fs.FS](https://pkg.go.dev/io/fs#FS)
+- [fs.GlobFS](https://pkg.go.dev/io/fs#GlobFS)
 - [fs.ReadDirFS](https://pkg.go.dev/io/fs#ReadDirFS)
+- [fs.ReadFileFS](https://pkg.go.dev/io/fs#ReadFileFS)
 - [fs.StatFS](https://pkg.go.dev/io/fs#StatFS)
+- [fs.SubFS](https://pkg.go.dev/io/fs#SubFS)
 
 It also allows the creation of files and directories.
 
