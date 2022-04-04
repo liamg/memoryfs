@@ -211,6 +211,8 @@ func (d *dir) glob(pattern string) ([]string, error) {
 	var entries []string
 	parts := strings.Split(pattern, separator)
 
+	d.RLock()
+	defer d.RUnlock()
 	for name, dir := range d.dirs {
 		if ok, err := filepath.Match(parts[0], name); err != nil {
 			return nil, err
