@@ -3,6 +3,7 @@ package memoryfs
 import (
 	"io/fs"
 	"io/ioutil"
+	"strings"
 	"time"
 )
 
@@ -102,6 +103,7 @@ func (m *FS) Sub(dir string) (fs.FS, error) {
 // The only possible returned error is ErrBadPattern, when pattern
 // is malformed.
 func (m *FS) Glob(pattern string) ([]string, error) {
+	pattern = strings.ReplaceAll(pattern, "/", separator)
 	return m.dir.glob(pattern)
 }
 
