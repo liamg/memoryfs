@@ -106,7 +106,7 @@ func (m *FS) Glob(pattern string) ([]string, error) {
 }
 
 // WriteLazyFile creates (or overwrites) the named file.
-// The contents of file are not set at this time, but are read on-demand later using the provider LazyOpener.
+// The contents of the file are not set at this time, but are read on-demand later using the provided LazyOpener.
 func (m *FS) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error {
 	return m.dir.WriteLazyFile(path, opener, perm)
 }
