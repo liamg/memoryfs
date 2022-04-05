@@ -75,7 +75,7 @@ func (m *FS) MkdirAll(path string, perm fs.FileMode) error {
 // The caller is permitted to modify the returned byte slice.
 // This method should return a copy of the underlying data.
 func (m *FS) ReadFile(name string) ([]byte, error) {
-	f, err := m.dir.Open(name)
+	f, err := m.dir.Open(cleanse(name))
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (m *FS) ReadFile(name string) ([]byte, error) {
 
 // Sub returns an FS corresponding to the subtree rooted at dir.
 func (m *FS) Sub(dir string) (fs.FS, error) {
-	d, err := m.dir.getDir(dir)
+	d, err := m.dir.getDir(cleanse(dir))
 	if err != nil {
 		return nil, err
 	}
@@ -108,5 +108,5 @@ func (m *FS) Glob(pattern string) ([]string, error) {
 // WriteLazyFile creates (or overwrites) the named file.
 // The contents of the file are not set at this time, but are read on-demand later using the provided LazyOpener.
 func (m *FS) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error {
-	return m.dir.WriteLazyFile(path, opener, perm)
+	return m.dir.WriteLazyFile(cleanse(path), opener, perm)
 }
