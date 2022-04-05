@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var separator = "/"
+var separator = string(filepath.Separator)
 
 type dir struct {
 	sync.RWMutex
@@ -82,7 +82,6 @@ func (d *dir) getDir(name string) (*dir, error) {
 }
 
 func (d *dir) ReadDir(name string) ([]fs.DirEntry, error) {
-
 	if name == "" {
 		var entries []fs.DirEntry
 		d.RLock()

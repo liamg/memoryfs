@@ -178,7 +178,7 @@ func Test_AllOperations(t *testing.T) {
 		results, err = memfs.Glob("files/*/b/*/*.txt")
 		require.NoError(t, err)
 		assert.Len(t, results, 1)
-		assert.Contains(t, results, "files/a/b/c/note.txt")
+		assert.Contains(t, results, strings.ReplaceAll("files/a/b/c/note.txt", "/", separator))
 	})
 
 	t.Run("Lazy read", func(t *testing.T) {
@@ -275,7 +275,7 @@ func Test_MkdirAllRoot(t *testing.T) {
 	err := memfs.MkdirAll(".", 0o644)
 	require.NoError(t, err)
 	var count int
-	err = fs.WalkDir(memfs, ".", func(path string, info fs.DirEntry, err error) error {
+	err = fs.WalkDir(memfs, ".", func(_ string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
