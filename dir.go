@@ -1,9 +1,8 @@
 package memoryfs
 
 import (
-	"fmt"
+	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -27,18 +26,14 @@ func (d *dir) Open(name string) (fs.File, error) {
 	}
 
 	if f, err := d.getFile(name); err == nil {
-		return f.openR(), nil
-	} else if !os.IsNotExist(err) {
-		return nil, err
+		return f.open()
 	}
 
 	if f, err := d.getDir(name); err == nil {
 		return f, nil
-	} else if !os.IsNotExist(err) {
-		return nil, err
 	}
 
-	return nil, fmt.Errorf("no such file or directory: %s: %w", name, fs.ErrNotExist)
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
 func (d *dir) Stat() (fs.FileInfo, error) {
@@ -92,7 +87,7 @@ func (d *dir) ReadDir(name string) ([]fs.DirEntry, error) {
 		var entries []fs.DirEntry
 		d.RLock()
 		for _, file := range d.files {
-			stat, _ := file.openR().Stat()
+			stat := file.stat()
 			entries = append(entries, stat.(fs.DirEntry))
 		}
 		for _, dir := range d.dirs {
@@ -115,31 +110,31 @@ func (d *dir) ReadDir(name string) ([]fs.DirEntry, error) {
 	return dir.ReadDir(strings.Join(parts[1:], separator))
 }
 
-func (f *dir) Read(_ []byte) (int, error) {
+func (d *dir) Read(_ []byte) (int, error) {
 	return 0, fs.ErrInvalid
 }
 
-func (f *dir) Close() error {
+func (d *dir) Close() error {
 	return nil
 }
 
-func (f *dir) MkdirAll(path string, perm fs.FileMode) error {
+func (d *dir) MkdirAll(path string, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 
 	if path == "" {
 		return nil
 	}
 
-	f.RLock()
-	_, ok := f.files[parts[0]]
-	f.RUnlock()
+	d.RLock()
+	_, ok := d.files[parts[0]]
+	d.RUnlock()
 	if ok {
 		return fs.ErrExist
 	}
 
-	f.Lock()
-	if _, ok := f.dirs[parts[0]]; !ok {
-		f.dirs[parts[0]] = &dir{
+	d.Lock()
+	if _, ok := d.dirs[parts[0]]; !ok {
+		d.dirs[parts[0]] = &dir{
 			info: fileinfo{
 				name:     parts[0],
 				size:     0x100,
@@ -151,19 +146,19 @@ func (f *dir) MkdirAll(path string, perm fs.FileMode) error {
 			files: map[string]*file{},
 		}
 	}
-	f.info.modified = time.Now()
-	f.Unlock()
+	d.info.modified = time.Now()
+	d.Unlock()
 
 	if len(parts) == 1 {
 		return nil
 	}
 
-	f.RLock()
-	defer f.RUnlock()
-	return f.dirs[parts[0]].MkdirAll(strings.Join(parts[1:], separator), perm)
+	d.RLock()
+	defer d.RUnlock()
+	return d.dirs[parts[0]].MkdirAll(strings.Join(parts[1:], separator), perm)
 }
 
-func (f *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
+func (d *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 
 	if len(parts) == 1 {
@@ -173,14 +168,14 @@ func (f *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 		}
 		buffer := make([]byte, len(data), max)
 		copy(buffer, data)
-		f.Lock()
-		defer f.Unlock()
-		if existing, ok := f.files[parts[0]]; ok {
+		d.Lock()
+		defer d.Unlock()
+		if existing, ok := d.files[parts[0]]; ok {
 			if err := existing.overwrite(buffer, perm); err != nil {
 				return err
 			}
 		} else {
-			f.files[parts[0]] = &file{
+			newFile := &file{
 				info: fileinfo{
 					name:     parts[0],
 					size:     int64(len(buffer)),
@@ -190,20 +185,26 @@ func (f *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 				},
 				content: buffer,
 			}
+			newFile.opener = func() (io.Reader, error) {
+				return &lazyAccess{
+					file: newFile,
+				}, nil
+			}
+			d.files[parts[0]] = newFile
 		}
 		return nil
 	}
 
-	f.RLock()
-	_, ok := f.dirs[parts[0]]
-	f.RUnlock()
+	d.RLock()
+	_, ok := d.dirs[parts[0]]
+	d.RUnlock()
 	if !ok {
 		return fs.ErrNotExist
 	}
 
-	f.RLock()
-	defer f.RUnlock()
-	return f.dirs[parts[0]].WriteFile(strings.Join(parts[1:], separator), data, perm)
+	d.RLock()
+	defer d.RUnlock()
+	return d.dirs[parts[0]].WriteFile(strings.Join(parts[1:], separator), data, perm)
 }
 
 func (d *dir) glob(pattern string) ([]string, error) {
@@ -242,4 +243,35 @@ func (d *dir) glob(pattern string) ([]string, error) {
 	}
 
 	return entries, nil
+}
+
+func (d *dir) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error {
+	parts := strings.Split(path, separator)
+
+	if len(parts) == 1 {
+		d.Lock()
+		defer d.Unlock()
+		d.files[parts[0]] = &file{
+			info: fileinfo{
+				name:     parts[0],
+				size:     0,
+				modified: time.Now(),
+				isDir:    false,
+				mode:     perm,
+			},
+			opener: opener,
+		}
+		return nil
+	}
+
+	d.RLock()
+	_, ok := d.dirs[parts[0]]
+	d.RUnlock()
+	if !ok {
+		return fs.ErrNotExist
+	}
+
+	d.RLock()
+	defer d.RUnlock()
+	return d.dirs[parts[0]].WriteLazyFile(strings.Join(parts[1:], separator), opener, perm)
 }

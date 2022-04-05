@@ -1,9 +1,12 @@
 package memoryfs
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/fs"
 	"io/ioutil"
+	"strings"
 	"sync"
 	"testing"
 
@@ -176,6 +179,44 @@ func Test_AllOperations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, results, 1)
 		assert.Contains(t, results, "files/a/b/c/note.txt")
+	})
+
+	t.Run("Lazy read", func(t *testing.T) {
+		err := memfs.WriteLazyFile("files/lazy.txt", func() (io.Reader, error) {
+			return strings.NewReader("hello"), nil
+		}, 0644)
+		require.NoError(t, err)
+
+		data, err := memfs.ReadFile("files/lazy.txt")
+		require.NoError(t, err)
+		assert.Equal(t, "hello", string(data))
+
+		data, err = memfs.ReadFile("files/lazy.txt")
+		require.NoError(t, err)
+		assert.Equal(t, "hello", string(data))
+	})
+
+	t.Run("Lazy write", func(t *testing.T) {
+
+		buffer := bytes.NewBuffer([]byte{})
+		_, err := buffer.Write([]byte{1, 2, 3})
+		require.NoError(t, err)
+
+		err = memfs.WriteLazyFile("files/lazy.rw", func() (io.Reader, error) {
+			return buffer, nil
+		}, 0644)
+		require.NoError(t, err)
+
+		data, err := memfs.ReadFile("files/lazy.rw")
+		require.NoError(t, err)
+		assert.Equal(t, []byte{1, 2, 3}, data)
+
+		err = memfs.WriteFile("files/lazy.rw", []byte{4, 5, 6}, 0644)
+		require.NoError(t, err)
+
+		data, err = memfs.ReadFile("files/lazy.rw")
+		require.NoError(t, err)
+		assert.Equal(t, []byte{4, 5, 6}, data)
 	})
 }
 
