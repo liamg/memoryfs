@@ -1,10 +1,23 @@
 package memoryfs
 
 import (
-	"path/filepath"
 	"strings"
 )
 
 func cleanse(path string) string {
-	return strings.TrimPrefix(strings.TrimPrefix(filepath.Clean(path), "."), separator)
+	path = strings.TrimPrefix(path, separator)
+	var accepted []string
+	for _, part := range strings.Split(path, separator) {
+		switch {
+		case part == "" || part == ".":
+			continue
+		case part == "..":
+			if len(accepted) > 0 {
+				accepted = accepted[:len(accepted)-1]
+			}
+			continue
+		}
+		accepted = append(accepted, part)
+	}
+	return strings.Join(accepted, separator)
 }
