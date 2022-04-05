@@ -275,7 +275,7 @@ func Test_MkdirAllRoot(t *testing.T) {
 	err := memfs.MkdirAll(".", 0o644)
 	require.NoError(t, err)
 	var count int
-	err = fs.WalkDir(memfs, ".", func(path string, info fs.DirEntry, err error) error {
+	err = fs.WalkDir(memfs, ".", func(_ string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
