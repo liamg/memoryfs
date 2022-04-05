@@ -31,7 +31,7 @@ func New() *FS {
 func (m *FS) Stat(name string) (fs.FileInfo, error) {
 	name = cleanse(name)
 	if f, err := m.dir.getFile(name); err == nil {
-		return f.openR().Stat()
+		return f.stat(), nil
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -79,4 +79,8 @@ func (m *FS) Sub(dir string) (fs.FS, error) {
 
 func (m *FS) Glob(pattern string) ([]string, error) {
 	return m.dir.glob(pattern)
+}
+
+func (m *FS) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error {
+	return m.dir.WriteLazyFile(path, opener, perm)
 }
