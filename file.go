@@ -21,6 +21,9 @@ type fileAccess struct {
 	reader io.Reader
 }
 
+
+// LazyOpener provides an io.Reader that can be used to access the content of a file, whatever the actual storage medium.
+// If the LazyOpener returns an io.ReadCloser, it will be closed after each read.
 type LazyOpener func() (io.Reader, error)
 
 const bufferSize = 0x100
