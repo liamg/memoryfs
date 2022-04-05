@@ -50,5 +50,5 @@ func main() {
 
 ## Lazy Loading
 
-If you are mirroring a disk file-system in memory, it can become very inefficient when large files are in use. For this scenario, the `WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error` method is recommended. It allows you to add a file whose content will be provided on-demand by calling the `LazyOpener` function.
+If you are mirroring a disk file-system in memory, it can become very inefficient when large files are in use. For this scenario, the [WriteLazyFile](https://pkg.go.dev/github.com/liamg/memoryfs@v1.1.0#FS.WriteLazyFile) method is recommended. It allows you to add a file whose content will be provided on-demand by calling the [LazyOpener](https://pkg.go.dev/github.com/liamg/memoryfs@v1.1.0#LazyOpener) function.
 
