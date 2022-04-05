@@ -47,3 +47,8 @@ func main() {
     fmt.Println(string(data))
 }
 ```
+
+## Lazy Loading
+
+If you are mirroring a disk file-system in memory, it can become very inefficient when large files are in use. For this scenario, the `WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error` method is recommended. It allows you to add a file whose content will be provided on-demand by calling the `LazyOpener` function.
+

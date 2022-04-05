@@ -1,10 +1,8 @@
 package memoryfs
 
 import (
-	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -29,17 +27,13 @@ func (d *dir) Open(name string) (fs.File, error) {
 
 	if f, err := d.getFile(name); err == nil {
 		return f.open()
-	} else if !os.IsNotExist(err) {
-		return nil, err
 	}
 
 	if f, err := d.getDir(name); err == nil {
 		return f, nil
-	} else if !os.IsNotExist(err) {
-		return nil, err
 	}
 
-	return nil, fmt.Errorf("no such file or directory: %s: %w", name, fs.ErrNotExist)
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
 func (d *dir) Stat() (fs.FileInfo, error) {
