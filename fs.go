@@ -29,6 +29,30 @@ func New() *FS {
 	}
 }
 
+// ExtendFS allows you to take on fs.FS and wrap it in an fs that is writable
+func ExtendFS(base fs.FS) *FS {
+	newFS := New()
+
+	fs.WalkDir(base, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return newFS.MkdirAll(path, d.Type().Perm())
+		}
+
+		content, err := fs.ReadFile(base, path)
+		if err != nil {
+			return err
+		}
+
+		return newFS.WriteFile(path, content, d.Type().Perm())
+	})
+
+	return newFS
+}
+
 // Stat returns a FileInfo describing the file.
 func (m *FS) Stat(name string) (fs.FileInfo, error) {
 	name = cleanse(name)
