@@ -1,6 +1,7 @@
 package memoryfs
 
 import (
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"strings"
@@ -32,7 +33,6 @@ func New() *FS {
 // ExtendFS allows you to take on fs.FS and wrap it in an fs that is writable
 func ExtendFS(base fs.FS) *FS {
 	newFS := New()
-
 	fs.WalkDir(base, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -42,12 +42,10 @@ func ExtendFS(base fs.FS) *FS {
 			return newFS.MkdirAll(path, d.Type().Perm())
 		}
 
-		content, err := fs.ReadFile(base, path)
-		if err != nil {
-			return err
-		}
-
-		return newFS.WriteFile(path, content, d.Type().Perm())
+		// Lazy write the files, holding onto the base FS to read the content on demand
+		return newFS.WriteLazyFile(path, func() (io.Reader, error) {
+			return base.Open(path)
+		}, d.Type().Perm())
 	})
 
 	return newFS
