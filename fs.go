@@ -134,3 +134,8 @@ func (m *FS) Glob(pattern string) ([]string, error) {
 func (m *FS) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error {
 	return m.dir.WriteLazyFile(cleanse(path), opener, perm)
 }
+
+// Remove deletes a file from the filesystem
+func (m *FS) Remove(path string) error {
+	return m.dir.Remove(cleanse(path))
+}

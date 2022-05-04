@@ -270,6 +270,44 @@ func Test_WriteWhileOpen(t *testing.T) {
 	assert.Equal(t, "hello world", string(data))
 }
 
+func Test_DeleteFile(t *testing.T) {
+	memfs := New()
+	err := memfs.WriteFile("test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("test.txt")
+	require.NoError(t, err)
+
+	_, err = memfs.Open("test.txt")
+	require.Error(t, err)
+}
+
+func Test_DeleteNestedFile(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll("/some/arbitrary/path", 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+
+	_, err = memfs.Open("/some/arbitrary/path/test.txt")
+	require.Error(t, err)
+}
+
 func Test_CloneFS(t *testing.T) {
 	memfs := New()
 	require.NoError(t, memfs.WriteFile("file1.txt", []byte("This is the first file"), fs.ModePerm))

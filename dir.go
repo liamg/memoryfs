@@ -36,10 +36,41 @@ func (d *dir) Open(name string) (fs.File, error) {
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
+func (d *dir) Remove(name string) error {
+
+	if name == "" || name == "." {
+		return nil
+	}
+
+	return d.removeFile(name)
+}
+
 func (d *dir) Stat() (fs.FileInfo, error) {
 	d.RLock()
 	defer d.RUnlock()
 	return d.info, nil
+}
+
+func (d *dir) removeFile(name string) error {
+
+	parts := strings.Split(name, separator)
+	if len(parts) == 1 {
+		d.RLock()
+		_, ok := d.files[name]
+		d.RUnlock()
+		if ok {
+			delete(d.files, name)
+			return nil
+		}
+		return fs.ErrNotExist
+	}
+
+	sub, err := d.getDir(parts[0])
+	if err != nil {
+		return err
+	}
+
+	return sub.removeFile(strings.Join(parts[1:], separator))
 }
 
 func (d *dir) getFile(name string) (*file, error) {
