@@ -270,6 +270,27 @@ func Test_WriteWhileOpen(t *testing.T) {
 	assert.Equal(t, "hello world", string(data))
 }
 
+func Test_CloneFS(t *testing.T) {
+	memfs := New()
+	require.NoError(t, memfs.WriteFile("file1.txt", []byte("This is the first file"), fs.ModePerm))
+	require.NoError(t, memfs.MkdirAll("/original/fs", fs.ModeDir))
+	require.NoError(t, memfs.WriteFile("original/fs/nested.txt", []byte("This is the nested file"), fs.ModePerm))
+
+	clone := CloneFS(memfs)
+	require.NoError(t, clone.WriteFile("second.txt", []byte("This is the second file"), fs.ModePerm))
+
+	for _, filename := range []string{"file1.txt", "/original/fs/nested.txt", "second.txt"} {
+		f, err := clone.Open(filename)
+		require.NoError(t, err)
+		defer func() { _ = f.Close() }()
+
+		data, err := ioutil.ReadAll(f)
+		require.NoError(t, err)
+		assert.NotNil(t, data)
+	}
+
+}
+
 func Test_MkdirAllRoot(t *testing.T) {
 	memfs := New()
 	err := memfs.MkdirAll(".", 0o644)
