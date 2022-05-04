@@ -270,6 +270,128 @@ func Test_WriteWhileOpen(t *testing.T) {
 	assert.Equal(t, "hello world", string(data))
 }
 
+func Test_DeleteFile(t *testing.T) {
+	memfs := New()
+	err := memfs.WriteFile("test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("test.txt")
+	require.NoError(t, err)
+
+	_, err = memfs.Open("test.txt")
+	require.Error(t, err)
+}
+
+func Test_DeleteNestedFile(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll("/some/arbitrary/path", 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+
+	_, err = memfs.Open("/some/arbitrary/path/test.txt")
+	require.Error(t, err)
+}
+
+func Test_DeleteEmptyDirectory(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll("/some/arbitrary/path", 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+
+	err = memfs.Remove("/some/arbitrary/path")
+	require.NoError(t, err)
+
+	_, err = memfs.Stat("/some/arbitrary/path")
+	require.Error(t, err)
+}
+
+func Test_DeleteNonEmptyDirectoryError(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll("/some/arbitrary/path", 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("/some/arbitrary/path")
+	require.Error(t, err)
+}
+
+func Test_DeleteNonEmptyDirectorySuccess(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll("/some/arbitrary/path", 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test2.txt", []byte("hello world too"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("/some/arbitrary/path")
+	require.Error(t, err)
+
+	err = memfs.RemoveAll("/some/arbitrary/path")
+	require.NoError(t, err)
+}
+
+func Test_DeleteNonEmptyDirectorySuccessFromHigherLevel(t *testing.T) {
+	memfs := New()
+	err := memfs.MkdirAll("/some/arbitrary/path", 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test.txt", []byte("hello world"), 0o644)
+	require.NoError(t, err)
+	err = memfs.WriteFile("/some/arbitrary/path/test2.txt", []byte("hello world too"), 0o644)
+	require.NoError(t, err)
+
+	f, err := memfs.Open("/some/arbitrary/path/test.txt")
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+
+	err = memfs.Remove("/some")
+	require.Error(t, err)
+
+	err = memfs.RemoveAll("/some")
+	require.NoError(t, err)
+}
+
 func Test_CloneFS(t *testing.T) {
 	memfs := New()
 	require.NoError(t, memfs.WriteFile("file1.txt", []byte("This is the first file"), fs.ModePerm))

@@ -36,10 +36,67 @@ func (d *dir) Open(name string) (fs.File, error) {
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
+func (d *dir) Remove(name string) error {
+	if name == "" || name == "." {
+		return nil
+	}
+
+	return d.removePath(name, false)
+}
+
+func (d *dir) RemoveAll(name string) error {
+	if name == "" || name == "." {
+		return nil
+	}
+
+	return d.removePath(name, true)
+}
+
 func (d *dir) Stat() (fs.FileInfo, error) {
 	d.RLock()
 	defer d.RUnlock()
 	return d.info, nil
+}
+
+func (d *dir) removePath(name string, recursive bool) error {
+
+	parts := strings.Split(name, separator)
+	if len(parts) == 1 {
+		d.RLock()
+		_, ok := d.files[name]
+		d.RUnlock()
+		if ok {
+			delete(d.files, name)
+			return nil
+		}
+
+		if sub, err := d.getDir(parts[0]); err == nil {
+			d.RLock()
+			defer d.RUnlock()
+			if len(sub.dirs) == 0 && len(sub.files) == 0 {
+				delete(d.dirs, parts[0])
+				return nil
+			} else if recursive {
+				for _, s := range sub.dirs {
+					sub.removePath(s.info.name, recursive)
+				}
+				for _, f := range sub.files {
+					sub.removePath(f.info.name, recursive)
+				}
+				delete(d.dirs, parts[0])
+				return nil
+			}
+			return fs.ErrInvalid
+		}
+		return fs.ErrNotExist
+	}
+
+	sub, err := d.getDir(parts[0])
+	if err != nil {
+		return err
+	}
+
+	return sub.removePath(strings.Join(parts[1:], separator), recursive)
 }
 
 func (d *dir) getFile(name string) (*file, error) {
