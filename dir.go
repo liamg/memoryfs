@@ -71,8 +71,8 @@ func (d *dir) removePath(name string, recursive bool) error {
 		}
 
 		if sub, err := d.getDir(parts[0]); err == nil {
-			d.RLock()
-			defer d.RUnlock()
+			d.Lock()
+			defer d.Unlock()
 			if len(sub.dirs) == 0 && len(sub.files) == 0 {
 				delete(d.dirs, parts[0])
 				return nil
