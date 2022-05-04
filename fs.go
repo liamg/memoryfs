@@ -30,8 +30,8 @@ func New() *FS {
 	}
 }
 
-// ExtendFS allows you to take on fs.FS and wrap it in an fs that is writable
-func ExtendFS(base fs.FS) *FS {
+// CloneFS allows you to take on fs.FS and wrap it in an fs that is writable
+func CloneFS(base fs.FS) *FS {
 	newFS := New()
 	fs.WalkDir(base, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
