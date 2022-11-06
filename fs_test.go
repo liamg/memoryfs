@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -217,6 +218,31 @@ func Test_AllOperations(t *testing.T) {
 		data, err = memfs.ReadFile("files/lazy.rw")
 		require.NoError(t, err)
 		assert.Equal(t, []byte{4, 5, 6}, data)
+	})
+
+	t.Run("Set modified time to directory", func(t *testing.T) {
+		modified := time.Date(2112, 9, 3, 12, 34, 56, 321, time.UTC)
+
+		err := memfs.SetModified("files/a/b/c", modified)
+		assert.NoError(t, err)
+
+		stat, err := memfs.Stat("files/a/b/c")
+		assert.NoError(t, err)
+		assert.Equal(t, modified, stat.ModTime())
+	})
+
+	t.Run("Set modified time to file", func(t *testing.T) {
+		modified := time.Date(2112, 9, 3, 12, 34, 56, 321, time.UTC)
+
+		err := memfs.SetModified("test.txt", modified)
+		assert.NoError(t, err)
+
+		stat, err := memfs.Stat("test.txt")
+		assert.NoError(t, err)
+		assert.Equal(t, modified, stat.ModTime())
+
+		_, err = memfs.Stat("not_found.txt")
+		assert.Error(t, err)
 	})
 }
 
