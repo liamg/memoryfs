@@ -159,3 +159,17 @@ func (m *FS) SetModified(name string, modified time.Time) error {
 	}
 	return &fs.PathError{Op: "set modified", Path: name, Err: fs.ErrNotExist}
 }
+
+// SetSys set underlying data source to file or directory
+func (m *FS) SetSys(name string, sys interface{}) error {
+	name = cleanse(name)
+	if f, err := m.dir.getFile(name); err == nil {
+		f.info.sys = sys
+		return nil
+	}
+	if f, err := m.dir.getDir(name); err == nil {
+		f.info.sys = sys
+		return nil
+	}
+	return &fs.PathError{Op: "set sys", Path: name, Err: fs.ErrNotExist}
+}
