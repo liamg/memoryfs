@@ -39,6 +39,12 @@ func Test_AllOperations(t *testing.T) {
 	require.NoError(t, memfs.WriteFile("files/a/b/c/.secret", []byte("secret file!"), 0o644))
 	require.NoError(t, memfs.WriteFile("files/a/b/c/note.txt", []byte(":)"), 0o644))
 	require.NoError(t, memfs.WriteFile("files/a/middle.txt", []byte(":("), 0o644))
+	require.NoError(t, memfs.MkdirAll("files/xyz", 0o700|fs.ModeDir))
+
+	require.Error(t, memfs.WriteFile("test.txt", []byte("hello world"), 0o644|fs.ModeDir))
+	require.Error(t, memfs.WriteLazyFile("test.txt", func() (io.Reader, error) {
+		return strings.NewReader("hello"), nil
+	}, 0o644|fs.ModeDir))
 
 	t.Run("Open file", func(t *testing.T) {
 		f, err := memfs.Open("test.txt")
@@ -78,6 +84,7 @@ func Test_AllOperations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "test.txt", info.Name())
 		assert.Equal(t, fs.FileMode(0o644), info.Mode())
+		assert.Equal(t, false, info.Mode().IsDir())
 		assert.Equal(t, false, info.IsDir())
 		assert.Equal(t, int64(11), info.Size())
 	})
@@ -87,6 +94,7 @@ func Test_AllOperations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ".secret", info.Name())
 		assert.Equal(t, fs.FileMode(0o644), info.Mode())
+		assert.Equal(t, false, info.Mode().IsDir())
 		assert.Equal(t, false, info.IsDir())
 		assert.Equal(t, int64(12), info.Size())
 	})
@@ -95,6 +103,16 @@ func Test_AllOperations(t *testing.T) {
 		info, err := memfs.Stat("missing.txt")
 		require.Error(t, err)
 		assert.Nil(t, info)
+	})
+
+	t.Run("Stat directory", func(t *testing.T) {
+		info, err := memfs.Stat("files/xyz")
+		require.NoError(t, err)
+		assert.Equal(t, "xyz", info.Name())
+		assert.Equal(t, fs.FileMode(0o700|fs.ModeDir), info.Mode())
+		assert.Equal(t, true, info.IsDir())
+		assert.Equal(t, true, info.Mode().IsDir())
+		assert.Equal(t, int64(256), info.Size())
 	})
 
 	t.Run("List directory at root", func(t *testing.T) {
@@ -125,8 +143,9 @@ func Test_AllOperations(t *testing.T) {
 		info, err := memfs.Stat(".")
 		require.NoError(t, err)
 		assert.Equal(t, ".", info.Name())
-		assert.Equal(t, fs.FileMode(0o700), info.Mode())
+		assert.Equal(t, fs.FileMode(0o700|fs.ModeDir), info.Mode())
 		assert.Equal(t, true, info.IsDir())
+		assert.Equal(t, true, info.Mode().IsDir())
 	})
 
 	t.Run("ReadFile", func(t *testing.T) {
