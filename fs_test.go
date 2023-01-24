@@ -263,6 +263,55 @@ func Test_AllOperations(t *testing.T) {
 		_, err = memfs.Stat("not_found.txt")
 		assert.Error(t, err)
 	})
+
+	t.Run("Set sys to directory", func(t *testing.T) {
+		type sysStat struct {
+			Gid int
+			Uid int
+		}
+
+		sys := sysStat{
+			Uid: 123,
+			Gid: 456,
+		}
+
+		stat, err := memfs.Stat("files/a/b/c")
+		assert.NoError(t, err)
+		assert.Nil(t, stat.Sys())
+
+		err = memfs.SetSys("files/a/b/c", sys)
+		assert.NoError(t, err)
+
+		stat, err = memfs.Stat("files/a/b/c")
+		assert.NoError(t, err)
+		assert.Equal(t, sys, stat.Sys())
+	})
+
+	t.Run("Set sys to file", func(t *testing.T) {
+		type sysStat struct {
+			Gid int
+			Uid int
+		}
+
+		sys := sysStat{
+			Uid: 123,
+			Gid: 456,
+		}
+
+		stat, err := memfs.Stat("test.txt")
+		assert.NoError(t, err)
+		assert.Nil(t, stat.Sys())
+
+		err = memfs.SetSys("test.txt", sys)
+		assert.NoError(t, err)
+
+		stat, err = memfs.Stat("test.txt")
+		assert.NoError(t, err)
+		assert.Equal(t, sys, stat.Sys())
+
+		err = memfs.SetSys("not_found.txt", sys)
+		assert.Error(t, err)
+	})
 }
 
 func Test_ConcurrentWritesToDirectory(t *testing.T) {

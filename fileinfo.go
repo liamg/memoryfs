@@ -10,6 +10,7 @@ type fileinfo struct {
 	size     int64
 	modified time.Time
 	mode     fs.FileMode
+	sys      interface{}
 }
 
 // Name is the base name of the file (without directory)
@@ -48,7 +49,7 @@ func (f fileinfo) IsDir() bool {
 	return f.Mode().IsDir()
 }
 
-// Sys is the underlying data source of the file (always nil)
+// Sys is the underlying data source of the file (can return nil)
 func (f fileinfo) Sys() interface{} {
-	return nil
+	return f.sys
 }
