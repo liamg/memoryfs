@@ -1,6 +1,7 @@
 package memoryfs
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -189,13 +190,15 @@ func (d *dir) MkdirAll(path string, perm fs.FileMode) error {
 	}
 
 	d.Lock()
+	if perm&fs.ModeDir == 0 {
+		perm |= fs.ModeDir
+	}
 	if _, ok := d.dirs[parts[0]]; !ok {
 		d.dirs[parts[0]] = &dir{
 			info: fileinfo{
 				name:     parts[0],
 				size:     0x100,
 				modified: time.Now(),
-				isDir:    true,
 				mode:     perm,
 			},
 			dirs:  map[string]*dir{},
@@ -217,6 +220,10 @@ func (d *dir) MkdirAll(path string, perm fs.FileMode) error {
 func (d *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 
+	if perm&fs.ModeDir != 0 {
+		return fmt.Errorf("invalid perm: %v", perm)
+	}
+
 	if len(parts) == 1 {
 		max := bufferSize
 		if len(data) > max {
@@ -236,7 +243,6 @@ func (d *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 					name:     parts[0],
 					size:     int64(len(buffer)),
 					modified: time.Now(),
-					isDir:    false,
 					mode:     perm,
 				},
 				content: buffer,
@@ -304,6 +310,10 @@ func (d *dir) glob(pattern string) ([]string, error) {
 func (d *dir) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 
+	if perm&fs.ModeDir != 0 {
+		return fmt.Errorf("invalid perm: %v", perm)
+	}
+
 	if len(parts) == 1 {
 		d.Lock()
 		defer d.Unlock()
@@ -312,7 +322,6 @@ func (d *dir) WriteLazyFile(path string, opener LazyOpener, perm fs.FileMode) er
 				name:     parts[0],
 				size:     0,
 				modified: time.Now(),
-				isDir:    false,
 				mode:     perm,
 			},
 			opener: opener,
