@@ -217,6 +217,55 @@ func (d *dir) MkdirAll(path string, perm fs.FileMode) error {
 	return d.dirs[parts[0]].MkdirAll(strings.Join(parts[1:], separator), perm)
 }
 
+func (d *dir) Mkdir(path string, perm fs.FileMode) error {
+	parts := strings.Split(path, separator)
+
+	if path == "" {
+		return fs.ErrExist
+	}
+
+	d.RLock()
+	_, fOk := d.files[parts[0]]
+	_, dOk := d.dirs[parts[0]]
+	d.RUnlock()
+	if fOk {
+		return fs.ErrExist
+	}
+	if !dOk && len(parts) > 1 {
+		return fs.ErrNotExist
+	}
+
+	if len(parts) == 1 {
+		d.Lock()
+		if perm&fs.ModeDir == 0 {
+			perm |= fs.ModeDir
+		}
+		_, ok := d.dirs[parts[0]]
+		if !ok {
+			d.dirs[parts[0]] = &dir{
+				info: fileinfo{
+					name:     parts[0],
+					size:     0x100,
+					modified: time.Now(),
+					mode:     perm,
+				},
+				dirs:  map[string]*dir{},
+				files: map[string]*file{},
+			}
+		}
+		d.Unlock()
+		if ok {
+			return fs.ErrExist
+		}
+
+		return nil
+	}
+
+	d.RLock()
+	defer d.RUnlock()
+	return d.dirs[parts[0]].Mkdir(strings.Join(parts[1:], separator), perm)
+}
+
 func (d *dir) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	parts := strings.Split(path, separator)
 

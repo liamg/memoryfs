@@ -89,6 +89,13 @@ func (m *FS) MkdirAll(path string, perm fs.FileMode) error {
 	return m.dir.MkdirAll(cleanse(path), perm)
 }
 
+// Mkdir create a directory named path.
+// Parent attributes are preserved.
+// If path is already exists, returns an error.
+func (m *FS) Mkdir(path string, perm fs.FileMode) error {
+	return m.dir.Mkdir(cleanse(path), perm)
+}
+
 // ReadFile reads the named file and returns its contents.
 // A successful call returns a nil error, not io.EOF.
 // (Because ReadFile reads the whole file, the expected EOF

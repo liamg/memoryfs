@@ -525,6 +525,84 @@ func Test_MkdirAllRoot(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_Mkdir(t *testing.T) {
+	memfs := New()
+	rootStat, err := memfs.Stat("/")
+	require.NoError(t, err)
+
+	rootMode := rootStat.Mode()
+	rootModTime := rootStat.ModTime()
+
+	t.Run("create directory on root", func(t *testing.T) {
+
+		err = memfs.Mkdir("/dir", 0o444)
+		assert.NoError(t, err)
+
+		stat, err := memfs.Stat("/dir")
+		assert.NoError(t, err)
+		assert.Equal(t, 0o444|fs.ModeDir, stat.Mode())
+
+		rootStat, err := memfs.Stat("/")
+		assert.NoError(t, err)
+		assert.Equal(t, rootMode, rootStat.Mode())
+		assert.Equal(t, rootModTime, rootStat.ModTime())
+	})
+
+	t.Run("create directory on sub directory", func(t *testing.T) {
+		err := memfs.Mkdir("/sub", 0o444)
+		assert.NoError(t, err)
+
+		subStat, err := memfs.Stat("/sub")
+		require.NoError(t, err)
+		subMode := subStat.Mode()
+		subModTime := subStat.ModTime()
+
+		err = memfs.Mkdir("/sub/dir", 0o666)
+		assert.NoError(t, err)
+
+		stat, err := memfs.Stat("/sub/dir")
+		assert.NoError(t, err)
+		assert.Equal(t, 0o666|fs.ModeDir, stat.Mode())
+
+		subStat, err = memfs.Stat("/sub")
+		assert.NoError(t, err)
+		assert.Equal(t, subMode, subStat.Mode())
+		assert.Equal(t, subModTime, subStat.ModTime())
+
+		rootStat, err := memfs.Stat("/")
+		assert.NoError(t, err)
+		assert.Equal(t, rootMode, rootStat.Mode())
+		assert.Equal(t, rootModTime, rootStat.ModTime())
+	})
+
+	t.Run("file already exists", func(t *testing.T) {
+		err := memfs.WriteFile("/file", []byte{}, 0o777)
+		assert.NoError(t, err)
+
+		err = memfs.Mkdir("/file", 0o644)
+		assert.Error(t, err)
+
+		err = memfs.Mkdir("/file/dir", 0o644)
+		assert.Error(t, err)
+	})
+
+	t.Run("directory already exists", func(t *testing.T) {
+		err := memfs.Mkdir("/", 0o644)
+		assert.Error(t, err)
+
+		err = memfs.Mkdir("/exists", 0o444)
+		assert.NoError(t, err)
+
+		err = memfs.Mkdir("/exists", 0o444)
+		assert.Error(t, err)
+	})
+
+	t.Run("parent not exists", func(t *testing.T) {
+		err := memfs.Mkdir("/not_exists/dir", 0o644)
+		assert.Error(t, err)
+	})
+}
+
 type entry struct {
 	path string
 	info fs.DirEntry
