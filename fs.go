@@ -3,7 +3,6 @@ package memoryfs
 import (
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"strings"
 	"time"
 )
@@ -102,7 +101,7 @@ func (m *FS) ReadFile(name string) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return ioutil.ReadAll(f)
+	return io.ReadAll(f)
 }
 
 // Sub returns an FS corresponding to the subtree rooted at dir.
