@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"testing"
@@ -50,7 +49,7 @@ func Test_AllOperations(t *testing.T) {
 		f, err := memfs.Open("test.txt")
 		require.NoError(t, err)
 		defer func() { _ = f.Close() }()
-		data, err := ioutil.ReadAll(f)
+		data, err := io.ReadAll(f)
 		require.NoError(t, err)
 		assert.Equal(t, "hello world", string(data))
 	})
@@ -74,7 +73,7 @@ func Test_AllOperations(t *testing.T) {
 		f, err := memfs.Open("files/a/b/c/.secret")
 		require.NoError(t, err)
 		defer func() { _ = f.Close() }()
-		data, err := ioutil.ReadAll(f)
+		data, err := io.ReadAll(f)
 		require.NoError(t, err)
 		assert.Equal(t, "secret file!", string(data))
 	})
@@ -358,7 +357,7 @@ func Test_WriteWhileOpen(t *testing.T) {
 	err = memfs.WriteFile("test.txt", []byte("hello world"), 0o644)
 	require.NoError(t, err)
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 
 	assert.Equal(t, "hello world", string(data))
@@ -371,7 +370,7 @@ func Test_DeleteFile(t *testing.T) {
 
 	f, err := memfs.Open("test.txt")
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(data))
 
@@ -391,7 +390,7 @@ func Test_DeleteNestedFile(t *testing.T) {
 
 	f, err := memfs.Open("/some/arbitrary/path/test.txt")
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(data))
 
@@ -411,7 +410,7 @@ func Test_DeleteEmptyDirectory(t *testing.T) {
 
 	f, err := memfs.Open("/some/arbitrary/path/test.txt")
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(data))
 
@@ -434,7 +433,7 @@ func Test_DeleteNonEmptyDirectoryError(t *testing.T) {
 
 	f, err := memfs.Open("/some/arbitrary/path/test.txt")
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(data))
 
@@ -453,7 +452,7 @@ func Test_DeleteNonEmptyDirectorySuccess(t *testing.T) {
 
 	f, err := memfs.Open("/some/arbitrary/path/test.txt")
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(data))
 
@@ -475,7 +474,7 @@ func Test_DeleteNonEmptyDirectorySuccessFromHigherLevel(t *testing.T) {
 
 	f, err := memfs.Open("/some/arbitrary/path/test.txt")
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(data))
 
@@ -500,7 +499,7 @@ func Test_CloneFS(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = f.Close() }()
 
-		data, err := ioutil.ReadAll(f)
+		data, err := io.ReadAll(f)
 		require.NoError(t, err)
 		assert.NotNil(t, data)
 	}
